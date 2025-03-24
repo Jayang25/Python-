@@ -1,0 +1,49 @@
+# coding: utf-8
+
+import pandas as pd
+import numpy as np 
+
+# Load the data
+posco = pd.read_csv('posco.csv')
+dt = pd.DataFrame(posco)
+
+# Select relevant columns
+dt = dt[['법인명', '지분율', '장부가액', '상장여부', '당기순손익']]
+
+# Function to clean and convert columns
+def clean_and_convert(column):
+    # Remove commas, non-breaking spaces, and leading/trailing whitespace
+    column = column.replace(',', '', regex=True)
+    column = column.str.replace('\xa0', '', regex=True)
+    column = column.str.strip()
+    # Convert to numeric type, coercing errors to NaN
+    return pd.to_numeric(column, errors='coerce')
+
+# Apply cleaning function to relevant columns
+dt['장부가액'] = clean_and_convert(dt['장부가액'])
+dt['지분율'] = clean_and_convert(dt['지분율'])
+
+# Sort by 장부가액 in descending order
+dt.sort_values(by='장부가액', ascending=False, inplace=True)
+
+# Replace None values with NaN, adjust 장부가액 to billions, and format
+dt['장부가액'] = dt['장부가액'].replace({None: np.nan})
+dt['장부가액_억원'] = (dt['장부가액'] / 100).fillna(0).astype(int)
+dt['장부가액_억원_포맷'] = dt['장부가액_억원'].apply(lambda x: f"{x:,}")
+
+# Clean 법인명 column
+dt['법인명'] = dt['법인명'].str.replace('(주)', '', regex=False).str.strip()
+
+# Update index to start from 1 and add it as a column
+dt.index = range(1, len(dt) + 1)
+dt['No.'] = dt.index
+
+# Rearrange columns to have index first
+dt = dt[['No.'] + [col for col in dt.columns if col != 'No.']]
+
+# Select cleaned columns for final output
+dt_cleaned = dt[['No.', '법인명', '지분율', '장부가액_억원_포맷', '상장여부', '당기순손익']]
+
+# Save cleaned data to a new CSV file
+dt_cleaned.to_csv('Posco_cleaned.csv', index=False, encoding='utf-8')
+print("Data has been saved to Posco_cleaned.csv")
